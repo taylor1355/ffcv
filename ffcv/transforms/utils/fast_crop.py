@@ -15,15 +15,15 @@ def autocontrast(source, scratchf, destination):
     minimum = [source[..., 0].min(), source[..., 1].min(), source[..., 2].min()]
     maximum = [source[..., 0].max(), source[..., 1].max(), source[..., 2].max()]
     scale = [0.0, 0.0, 0.0]
-    for i in prange(source.shape[-1]):
-        if minimum[i] == maximum[i]:
-            scale[i] = 1
-            minimum[i] = 0
+    for i1 in prange(source.shape[-1]):
+        if minimum[i1] == maximum[i1]:
+            scale[i1] = 1
+            minimum[i1] = 0
         else:
-            scale[i] = 255. / (maximum[i] - minimum[i])
-    for i in prange(source.shape[-1]): 
-        scratchf[..., i] = source[..., i] - minimum[i]
-        scratchf[..., i] = scratchf[..., i] * scale[i]
+            scale[i1] = 255. / (maximum[i1] - minimum[i1])
+    for i2 in prange(source.shape[-1]): 
+        scratchf[..., i2] = source[..., i2] - minimum[i2]
+        scratchf[..., i2] = scratchf[..., i2] * scale[i2]
     np.clip(scratchf, 0, 255, out=scratchf)
     destination[:] = scratchf
 
@@ -34,23 +34,23 @@ but probably slow -- scratch is a (channels, 256) uint16 array.
 """
 @njit(parallel=True, fastmath=True, inline='always')
 def equalize(source, scratch, destination):
-    for i in prange(source.shape[-1]):
+    for i3 in prange(source.shape[-1]):
         # TODO memory less than ideal for bincount() and hist()
-        scratch[i] = np.bincount(source[..., i].flatten(), minlength=256)
-        nonzero_hist = scratch[i][scratch[i] != 0]
+        scratch[i3] = np.bincount(source[..., i3].flatten(), minlength=256)
+        nonzero_hist = scratch[i3][scratch[i3] != 0]
         step = nonzero_hist[:-1].sum() // 255
     
         if step == 0:
             continue
         
-        scratch[i][1:] = scratch[i].cumsum()[:-1]
-        scratch[i] = (scratch[i] + step // 2) // step
-        scratch[i][0] = 0
-        np.clip(scratch[i], 0, 255, out=scratch[i])
+        scratch[i3][1:] = scratch[i3].cumsum()[:-1]
+        scratch[i3] = (scratch[i3] + step // 2) // step
+        scratch[i3][0] = 0
+        np.clip(scratch[i3], 0, 255, out=scratch[i3])
         
         # numba doesn't like 2d advanced indexing
         for row in prange(source.shape[0]):
-            destination[row, :, i] = scratch[i][source[row, :, i]]
+            destination[row, :, i3] = scratch[i3][source[row, :, i3]]
 
 """
 Equalize using OpenCV -- not equivalent to
